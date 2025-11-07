@@ -10,11 +10,14 @@ warnings.filterwarnings('ignore')
 
 # --- Constants ---
 
-### UPDATED FIX: Use relative paths directly for Streamlit deployment ###
-# This assumes 'nids_model.joblib' and 'KDDTest+.txt' are in the
-# same folder as this app.py file.
-MODEL_FILE = 'nids_model.joblib'
-TEST_DATA_FILE = 'KDDTest+.txt'
+### FINAL FIX: Use absolute paths based on the script's location ###
+# This is the robust way to find files on Streamlit's servers.
+# It gets the directory of this app.py file...
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ...and joins it with the filenames.
+MODEL_FILE = os.path.join(BASE_DIR, 'nids_model.joblib')
+TEST_DATA_FILE = os.path.join(BASE_DIR, 'KDDTest+.txt')
 ### END OF FIX ###
 
 
@@ -231,7 +234,7 @@ with tab2:
                     format="%.6f"
                 )
         
-        submit_button = st.form_submit_button("Classify Manual Input", type="primary")
+        submit_button = st.form_submit_.button("Classify Manual Input", type="primary")
 
     if submit_button:
         # Convert dict to DataFrame, ensuring correct column order
