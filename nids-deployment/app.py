@@ -9,8 +9,14 @@ import numpy as np
 warnings.filterwarnings('ignore')
 
 # --- Constants ---
+
+### UPDATED FIX: Use relative paths directly for Streamlit deployment ###
+# This assumes 'nids_model.joblib' and 'KDDTest+.txt' are in the
+# same folder as this app.py file.
 MODEL_FILE = 'nids_model.joblib'
 TEST_DATA_FILE = 'KDDTest+.txt'
+### END OF FIX ###
+
 
 # Define the 43 column names for the KDD dataset
 KDD_COL_NAMES = [
@@ -40,24 +46,26 @@ NUMERICAL_FEATURES = [col for col in FEATURE_COLS if col not in CATEGORICAL_FEAT
 def load_model(model_path):
     """
     Loads the trained model pipeline.
-    Returns None if the file doesn't exist.
+    Returns None if the file doesn't exist or fails to load.
     """
     if not os.path.exists(model_path):
+        st.error(f"Model file not found at path: {model_path}")
         return None
     try:
         pipeline = joblib.load(model_path)
         return pipeline
     except Exception as e:
-        st.error(f"Error loading model: {e}")
+        st.error(f"Error loading model from {model_path}: {e}")
         return None
 
 @st.cache_data
 def load_test_data(data_path):
     """
     Loads the KDDTest+.txt file and pre-calculates categorical options.
-    Returns None if the file doesn't exist.
+    Returns a tuple (df, categorical_options) on success, or None on failure.
     """
     if not os.path.exists(data_path):
+        st.error(f"Test data file not found at path: {data_path}")
         return None
     try:
         df = pd.read_csv(data_path, header=None, names=KDD_COL_NAMES)
@@ -69,8 +77,9 @@ def load_test_data(data_path):
             
         return df, categorical_options
     except Exception as e:
-        st.error(f"Error loading test data: {e}")
-        return None, None
+        st.error(f"Error loading or processing test data from {data_path}: {e}")
+        ### MODIFICATION FOR FIX 1: Always return a single None on failure ###
+        return None
 
 # --- Main Application ---
 st.set_page_config(page_title="NIDS", layout="wide")
@@ -79,19 +88,26 @@ st.title("🛡️ Network Intrusion Detection System (NIDS)")
 # 1. Load the trained model
 model_pipeline = load_model(MODEL_FILE)
 
+### FIX 1: Load data into a result variable FIRST, before unpacking ###
 # 2. Load the test data and categorical options
-test_data, categorical_options = load_test_data(TEST_DATA_FILE)
+data_load_result = load_test_data(TEST_DATA_FILE)
 
-# 3. Check if model and data are loaded
+# 3. Check if model and data are loaded (Robust Check)
 if model_pipeline is None:
-    st.error(f"**Model file not found: `{MODEL_FILE}`**")
-    st.info("Please run `python train_nids_model.py` in your terminal first to train and save the model.")
+    st.error(f"**Model file failed to load: `{MODEL_FILE}`**")
+    st.info("Please make sure the model file is in the same folder as app.py and is not corrupted.")
     st.stop()
 
-if test_data is None:
-    st.error(f"**Test data file not found: `{TEST_DATA_FILE}`**")
-    st.info("Please make sure `KDDTest+.txt` is in the same folder.")
+if data_load_result is None:
+    st.error(f"**Test data file failed to load: `{TEST_DATA_FILE}`**")
+    st.info("Please make sure `KDDTest+.txt` is in the same folder as app.py and is not corrupted.")
     st.stop()
+    
+# --- If we are here, all files loaded successfully ---
+# Now it's safe to unpack the data
+test_data, categorical_options = data_load_result
+### END OF FIX 1 ###
+
 
 # --- Create UI Tabs ---
 tab1, tab2 = st.tabs(["Simulate from Test File", "Manual Real-time Input"])
